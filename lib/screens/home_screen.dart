@@ -9,6 +9,7 @@ import '../theme/app_theme.dart';
 import '../widgets/aurora_background.dart';
 import '../widgets/glass.dart';
 import '../widgets/sticker_glyph.dart';
+import 'api_test_screen.dart';
 import 'editor_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -106,8 +107,10 @@ class _HomeScreenState extends State<HomeScreen> {
           Glass(
             radius: 100,
             padding: const EdgeInsets.all(11),
-            onTap: () {},
-            child: Icon(Icons.tune,
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ApiTestScreen()),
+            ),
+            child: Icon(Icons.api,
                 size: 20, color: AppTheme.textPrimary),
           ),
         ],

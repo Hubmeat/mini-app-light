@@ -10,6 +10,7 @@ import '../theme/app_theme.dart';
 import '../widgets/aurora_background.dart';
 import '../widgets/glass.dart';
 import '../widgets/sticker_glyph.dart';
+import 'api_test_screen.dart';
 import 'editor_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -115,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
             radius: 100,
             padding: const EdgeInsets.all(11),
             onTap: () async {
-              await Supabase.instance.client.auth.signOut();
+              // TODO: replace with ApiClient logout
             },
             child: Icon(Icons.logout,
                 size: 20, color: AppTheme.textSecondary),

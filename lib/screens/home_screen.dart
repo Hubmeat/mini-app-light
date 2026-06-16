@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../data/sticker_catalog.dart';
 import '../data/templates.dart';
@@ -107,8 +108,17 @@ class _HomeScreenState extends State<HomeScreen> {
             radius: 100,
             padding: const EdgeInsets.all(11),
             onTap: () {},
-            child: Icon(Icons.tune,
-                size: 20, color: AppTheme.textPrimary),
+            child: Icon(Icons.tune, size: 20, color: AppTheme.textPrimary),
+          ),
+          const SizedBox(width: 10),
+          Glass(
+            radius: 100,
+            padding: const EdgeInsets.all(11),
+            onTap: () async {
+              await Supabase.instance.client.auth.signOut();
+            },
+            child: Icon(Icons.logout,
+                size: 20, color: AppTheme.textSecondary),
           ),
         ],
       ),

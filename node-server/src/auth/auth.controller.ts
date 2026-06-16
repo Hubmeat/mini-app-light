@@ -4,7 +4,7 @@ import { UserId } from '../common/user-id.decorator';
 import { STORE, Store } from '../db/store.interface';
 import { User } from '../models/types';
 import { AuthService } from './auth.service';
-import { PhoneLoginDto, SendCodeDto, WechatLoginDto } from './dto';
+import { PhoneLoginDto, PhonePasswordDto, SendCodeDto, WechatLoginDto } from './dto';
 
 @Controller('auth')
 export class AuthController {
@@ -25,10 +25,22 @@ export class AuthController {
     return this.auth.sendPhoneCode(dto.phone);
   }
 
-  // 手机号登录：校验登录
+  // 手机号登录：校验登录（短信验证码，预留）
   @Post('phone/login')
   phoneLogin(@Body() dto: PhoneLoginDto) {
     return this.auth.loginWithPhone(dto.phone, dto.code);
+  }
+
+  // 手机号+密码：注册
+  @Post('phone/register')
+  phoneRegister(@Body() dto: PhonePasswordDto) {
+    return this.auth.registerWithPhonePassword(dto.phone, dto.password);
+  }
+
+  // 手机号+密码：登录
+  @Post('phone/password-login')
+  phonePasswordLogin(@Body() dto: PhonePasswordDto) {
+    return this.auth.loginWithPhonePassword(dto.phone, dto.password);
   }
 
   // 当前登录用户

@@ -8,6 +8,7 @@ export interface User {
   login_type: LoginType;
   openid: string | null;
   phone: string | null;
+  password_hash: string | null;
   nickname: string;
   used_count: number;
   quota_limit: number;
@@ -41,6 +42,7 @@ export interface CreateUserInput {
   login_type: LoginType;
   openid?: string | null;
   phone?: string | null;
+  password_hash?: string | null;
   nickname?: string;
   quota_limit?: number;
 }

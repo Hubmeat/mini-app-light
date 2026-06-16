@@ -75,9 +75,31 @@ class ApiClient {
   // ---- 接口 ----
   Future<Map<String, dynamic>> health() => _map(_dio.get('/health'));
 
+  Future<Map<String, dynamic>> registerWithPassword(
+      String phone, String password) async {
+    final data = await _map(
+      _dio.post('/auth/phone/register',
+          data: {'phone': phone, 'password': password}),
+    );
+    _token = data['token'] as String?;
+    return data;
+  }
+
+  Future<Map<String, dynamic>> loginWithPassword(
+      String phone, String password) async {
+    final data = await _map(
+      _dio.post('/auth/phone/password-login',
+          data: {'phone': phone, 'password': password}),
+    );
+    _token = data['token'] as String?;
+    return data;
+  }
+
+  /// 短信验证码登录（预留，短信服务接入后启用）
   Future<Map<String, dynamic>> sendPhoneCode(String phone) =>
       _map(_dio.post('/auth/phone/code', data: {'phone': phone}));
 
+  /// 短信验证码登录（预留，短信服务接入后启用）
   Future<Map<String, dynamic>> phoneLogin(String phone, String code) async {
     final data = await _map(
       _dio.post('/auth/phone/login', data: {'phone': phone, 'code': code}),

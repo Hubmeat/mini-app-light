@@ -19,3 +19,12 @@ export class PhoneLoginDto {
   @IsNotEmpty()
   code!: string;
 }
+
+export class PhonePasswordDto {
+  @Matches(/^1\d{10}$/, { message: '手机号格式不正确' })
+  phone!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  password!: string;
+}

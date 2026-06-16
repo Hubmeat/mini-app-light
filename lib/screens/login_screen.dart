@@ -1,7 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../screens/home_screen.dart';
+import '../services/api_client.dart';
+import '../services/auth_storage.dart';
 import '../theme/app_theme.dart';
 import '../widgets/aurora_background.dart';
 import '../widgets/glass.dart';
@@ -22,9 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _obscurePassword = true;
   bool _isRegisterMode = false;
 
-  SupabaseClient get _supabase => Supabase.instance.client;
-
-  String get _fullPhone => '+86${_phoneCtrl.text.trim()}';
+  String get _phone => _phoneCtrl.text.trim();
 
   @override
   void dispose() {
@@ -37,43 +37,30 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!(_formKey.currentState?.validate() ?? false)) return;
     setState(() => _loading = true);
     try {
+      final Map<String, dynamic> data;
       if (_isRegisterMode) {
-        final response = await _supabase.auth.signUp(
-          phone: _fullPhone,
-          password: _passwordCtrl.text,
-        );
-        if (mounted) {
-          if (response.session != null) {
-            await _upsertProfile(response.session!);
-          } else {
-            _showSnack('注册成功，请登录', isError: false);
-            setState(() => _isRegisterMode = false);
-          }
-        }
+        data = await ApiClient.instance
+            .registerWithPassword(_phone, _passwordCtrl.text);
       } else {
-        final response = await _supabase.auth.signInWithPassword(
-          phone: _fullPhone,
-          password: _passwordCtrl.text,
-        );
-        if (response.session != null && mounted) {
-          await _upsertProfile(response.session!);
+        data = await ApiClient.instance
+            .loginWithPassword(_phone, _passwordCtrl.text);
+      }
+      final token = data['token'] as String?;
+      if (token != null && mounted) {
+        await AuthStorage.instance.saveToken(token);
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const _HomeRedirect()),
+          );
         }
       }
-    } on AuthException catch (e) {
+    } on ApiException catch (e) {
       if (mounted) _showSnack(e.message);
     } catch (e) {
       if (mounted) _showSnack('发生错误，请稍后重试');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
-  }
-
-  Future<void> _upsertProfile(Session session) async {
-    await _supabase.from('user_profiles').upsert({
-      'id': session.user.id,
-      'phone': session.user.phone,
-      'last_login_at': DateTime.now().toIso8601String(),
-    });
   }
 
   void _showSnack(String message, {bool isError = true}) {
@@ -444,4 +431,11 @@ class _GlassTextField extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 登录成功后替换路由到 HomeScreen，清除返回栈。
+class _HomeRedirect extends StatelessWidget {
+  const _HomeRedirect();
+  @override
+  Widget build(BuildContext context) => const HomeScreen();
 }

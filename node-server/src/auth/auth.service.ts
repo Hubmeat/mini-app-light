@@ -1,9 +1,13 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { randomBytes, scrypt, timingSafeEqual } from 'crypto';
+import { promisify } from 'util';
 import { BizException } from '../common/biz-exception';
 import { STORE, Store } from '../db/store.interface';
 import { PublicUser, User } from '../models/types';
+
+const scryptAsync = promisify(scrypt);
 
 const SMS_TTL_MS = 5 * 60 * 1000; // 验证码 5 分钟有效
 
@@ -82,6 +86,46 @@ export class AuthService {
       throw new BizException(500, 'SMS_NOT_IMPLEMENTED', '阿里云短信尚未接入');
     }
     return { sent: true, devCode: mock ? code : undefined };
+  }
+
+  private async hashPassword(password: string): Promise<string> {
+    const salt = randomBytes(16).toString('hex');
+    const hash = (await scryptAsync(password, salt, 32)) as Buffer;
+    return `${salt}:${hash.toString('hex')}`;
+  }
+
+  private async verifyPassword(password: string, stored: string): Promise<boolean> {
+    const [salt, hashHex] = stored.split(':');
+    const hash = (await scryptAsync(password, salt, 32)) as Buffer;
+    const storedHash = Buffer.from(hashHex, 'hex');
+    return timingSafeEqual(hash, storedHash);
+  }
+
+  async registerWithPhonePassword(phone: string, password: string) {
+    const existing = await this.store.users.findByPhone(phone);
+    if (existing) {
+      throw new BizException(409, 'PHONE_EXISTS', '该手机号已注册');
+    }
+    const password_hash = await this.hashPassword(password);
+    const user = await this.store.users.create({
+      login_type: 'phone',
+      phone,
+      password_hash,
+      quota_limit: this.freeQuota(),
+    });
+    return this.issue(user);
+  }
+
+  async loginWithPhonePassword(phone: string, password: string) {
+    const user = await this.store.users.findByPhone(phone);
+    if (!user || !user.password_hash) {
+      throw new BizException(401, 'INVALID_CREDENTIALS', '手机号或密码错误');
+    }
+    const ok = await this.verifyPassword(password, user.password_hash);
+    if (!ok) {
+      throw new BizException(401, 'INVALID_CREDENTIALS', '手机号或密码错误');
+    }
+    return this.issue(user);
   }
 
   async loginWithPhone(phone: string, code: string) {

@@ -1,41 +1,37 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../screens/home_screen.dart';
 import '../screens/login_screen.dart';
+import '../services/auth_storage.dart';
 
-/// Listens to Supabase auth state and routes to [HomeScreen] or [LoginScreen].
-class AuthGate extends StatelessWidget {
+/// 启动时读取本地 token，决定路由到 [HomeScreen] 或 [LoginScreen]。
+class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return StreamBuilder<AuthState>(
-      stream: Supabase.instance.client.auth.onAuthStateChange,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const _SplashScreen();
-        }
-        final session = snapshot.data?.session ??
-            Supabase.instance.client.auth.currentSession;
-        if (session != null) {
-          return const HomeScreen();
-        }
-        return const LoginScreen();
-      },
-    );
-  }
+  State<AuthGate> createState() => _AuthGateState();
 }
 
-class _SplashScreen extends StatelessWidget {
-  const _SplashScreen();
+class _AuthGateState extends State<AuthGate> {
+  bool _loading = true;
+  bool _loggedIn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _restore();
+  }
+
+  Future<void> _restore() async {
+    final ok = await AuthStorage.instance.restoreToken();
+    if (mounted) setState(() { _loading = false; _loggedIn = ok; });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
+    if (_loading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    return _loggedIn ? const HomeScreen() : const LoginScreen();
   }
 }

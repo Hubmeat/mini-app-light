@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:fluwx/fluwx.dart';
 
 import '../screens/home_screen.dart';
 import '../services/api_client.dart';
@@ -23,11 +25,30 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
   bool _obscurePassword = true;
   bool _isRegisterMode = false;
+  StreamSubscription? _wechatSub;
 
   String get _phone => _phoneCtrl.text.trim();
 
+  static const _wechatAppId = 'wx5427f2e1c88dbb50';
+
+  @override
+  void initState() {
+    super.initState();
+    _initWechat();
+  }
+
+  Future<void> _initWechat() async {
+    await registerWxApi(appId: _wechatAppId, universalLink: 'https://guangyu.app/wechat/');
+    _wechatSub = weChatResponseEventHandler.listen((resp) {
+      if (resp is WeChatAuthResponse) {
+        _handleWechatCode(resp.code);
+      }
+    });
+  }
+
   @override
   void dispose() {
+    _wechatSub?.cancel();
     _phoneCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
@@ -58,6 +79,54 @@ class _LoginScreenState extends State<LoginScreen> {
       if (mounted) _showSnack(e.message);
     } catch (e) {
       if (mounted) _showSnack('发生错误，请稍后重试');
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _startWechatLogin() async {
+    final installed = await isWeChatInstalled;
+    if (!installed) {
+      _showSnack('请先安装微信 App', isError: true);
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      await sendWeChatAuth(
+        scope: 'snsapi_userinfo',
+        state: 'guangyu_login',
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        _showSnack('微信登录失败，请重试');
+      }
+    }
+  }
+
+  Future<void> _handleWechatCode(String? code) async {
+    if (code == null || code.isEmpty) {
+      if (mounted) {
+        setState(() => _loading = false);
+        _showSnack('微信授权取消');
+      }
+      return;
+    }
+    try {
+      final data = await ApiClient.instance.wechatLogin(code);
+      final token = data['token'] as String?;
+      if (token != null && mounted) {
+        await AuthStorage.instance.saveToken(token);
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const _HomeRedirect()),
+          );
+        }
+      }
+    } on ApiException catch (e) {
+      if (mounted) _showSnack(e.message);
+    } catch (e) {
+      if (mounted) _showSnack('微信登录失败，请重试');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -229,7 +298,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildWechatButton() {
     return GestureDetector(
-      onTap: () => _showSnack('微信登录即将开放', isError: false),
+      onTap: _loading ? null : _startWechatLogin,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         child: BackdropFilter(

@@ -44,32 +44,55 @@ export class AuthService {
     return { token: this.sign(user), user: this.publicUser(user) };
   }
 
-  /** 用小程序 code 换 openid；未配置 AppID/Secret 时走 mock。 */
-  private async wechatCode2Session(code: string): Promise<{ openid: string }> {
+  /**
+   * 移动端 OAuth：用 code 换 access_token + openid。
+   * 未配置 AppID/Secret 时走 mock（方便本地联调）。
+   */
+  private async wechatMobileOAuth(code: string): Promise<{ openid: string; nickname?: string }> {
     const appId = this.config.get<string>('wechat.appId');
     const secret = this.config.get<string>('wechat.secret');
-    if (!appId || !secret) return { openid: `mock_${code}` };
-    const url =
-      `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}` +
-      `&secret=${secret}&js_code=${code}&grant_type=authorization_code`;
-    const resp = await fetch(url);
-    const json: any = await resp.json();
-    if (json.errcode) {
-      throw new BizException(401, 'WECHAT_AUTH_FAILED', `微信登录失败：${json.errmsg}`);
+    if (!appId || !secret) {
+      this.logger.warn('[wechat:mock] 未配置 AppID/Secret，使用 mock openid');
+      return { openid: `mock_${code}` };
     }
-    return { openid: json.openid };
+
+    // Step 1: code → access_token + openid
+    const tokenUrl =
+      `https://api.weixin.qq.com/sns/oauth2/access_token?appid=${appId}` +
+      `&secret=${secret}&code=${code}&grant_type=authorization_code`;
+    const tokenResp = await fetch(tokenUrl);
+    const tokenJson: any = await tokenResp.json();
+    if (tokenJson.errcode) {
+      throw new BizException(401, 'WECHAT_AUTH_FAILED', `微信授权失败：${tokenJson.errmsg}`);
+    }
+    const { access_token, openid } = tokenJson;
+
+    // Step 2: access_token + openid → 用户信息（昵称等）
+    try {
+      const infoUrl =
+        `https://api.weixin.qq.com/sns/userinfo?access_token=${access_token}` +
+        `&openid=${openid}&lang=zh_CN`;
+      const infoResp = await fetch(infoUrl);
+      const infoJson: any = await infoResp.json();
+      return { openid, nickname: infoJson.nickname };
+    } catch {
+      return { openid };
+    }
   }
 
   async loginWithWechat(code: string) {
     if (!code) throw new BizException(400, 'BAD_REQUEST', '缺少 code');
-    const { openid } = await this.wechatCode2Session(code);
+    const { openid, nickname } = await this.wechatMobileOAuth(code);
     let user = await this.store.users.findByOpenid(openid);
     if (!user) {
       user = await this.store.users.create({
         login_type: 'wechat',
         openid,
+        nickname: nickname || '光屿用户',
         quota_limit: this.freeQuota(),
       });
+    } else if (nickname && user.nickname === '光屿用户') {
+      await this.store.users.update(user.id, { nickname });
     }
     return this.issue(user);
   }

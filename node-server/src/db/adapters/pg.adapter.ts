@@ -47,13 +47,14 @@ export function createPgStore(config: ConfigService): Store {
       async create(data) {
         return first(
           await q<User>(
-            `INSERT INTO users (id, login_type, openid, phone, nickname, used_count, quota_limit)
-             VALUES ($1, $2, $3, $4, $5, 0, $6) RETURNING *`,
+            `INSERT INTO users (id, login_type, openid, phone, password_hash, nickname, used_count, quota_limit)
+             VALUES ($1, $2, $3, $4, $5, $6, 0, $7) RETURNING *`,
             [
               randomUUID(),
               data.login_type,
               data.openid ?? null,
               data.phone ?? null,
+              data.password_hash ?? null,
               data.nickname ?? '光屿用户',
               data.quota_limit ?? freeQuota,
             ],

@@ -25,7 +25,8 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _loading = false;
   bool _obscurePassword = true;
   bool _isRegisterMode = false;
-  StreamSubscription? _wechatSub;
+  final _fluwx = Fluwx();
+  FluwxCancelable? _wechatCancelable;
 
   String get _phone => _phoneCtrl.text.trim();
 
@@ -38,8 +39,11 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _initWechat() async {
-    await registerWxApi(appId: _wechatAppId, universalLink: 'https://guangyu.app/wechat/');
-    _wechatSub = weChatResponseEventHandler.listen((resp) {
+    await _fluwx.registerApi(
+      appId: _wechatAppId,
+      universalLink: 'https://guangyu.app/wechat/',
+    );
+    _wechatCancelable = _fluwx.addSubscriber((resp) {
       if (resp is WeChatAuthResponse) {
         _handleWechatCode(resp.code);
       }
@@ -48,7 +52,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    _wechatSub?.cancel();
+    _wechatCancelable?.cancel();
     _phoneCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
@@ -85,16 +89,15 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _startWechatLogin() async {
-    final installed = await isWeChatInstalled;
+    final installed = await _fluwx.isWeChatInstalled;
     if (!installed) {
       _showSnack('请先安装微信 App', isError: true);
       return;
     }
     setState(() => _loading = true);
     try {
-      await sendWeChatAuth(
-        scope: 'snsapi_userinfo',
-        state: 'guangyu_login',
+      await _fluwx.authBy(
+        which: NormalAuth(scope: 'snsapi_userinfo', state: 'guangyu_login'),
       );
     } catch (e) {
       if (mounted) {
@@ -108,7 +111,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (code == null || code.isEmpty) {
       if (mounted) {
         setState(() => _loading = false);
-        _showSnack('微信授权取消');
+        _showSnack('微信授权取消', isError: false);
       }
       return;
     }

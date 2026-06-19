@@ -48,6 +48,7 @@ export function createSupabaseStore(config: ConfigService): Store {
               login_type: data.login_type,
               openid: data.openid ?? null,
               phone: data.phone ?? null,
+              password_hash: data.password_hash ?? null,
               nickname: data.nickname ?? '光屿用户',
               used_count: 0,
               quota_limit: data.quota_limit ?? freeQuota,

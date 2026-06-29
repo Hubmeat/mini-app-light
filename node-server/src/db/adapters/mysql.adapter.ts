@@ -52,13 +52,14 @@ export function createMysqlStore(config: ConfigService): Store {
       async create(data) {
         const id = randomUUID();
         await exec(
-          `INSERT INTO users (id, login_type, openid, phone, nickname, used_count, quota_limit)
-           VALUES (?, ?, ?, ?, ?, 0, ?)`,
+          `INSERT INTO users (id, login_type, openid, phone, password_hash, nickname, used_count, quota_limit)
+           VALUES (?, ?, ?, ?, ?, ?, 0, ?)`,
           [
             id,
             data.login_type,
             data.openid ?? null,
             data.phone ?? null,
+            data.password_hash ?? null,
             data.nickname ?? '光屿用户',
             data.quota_limit ?? freeQuota,
           ],

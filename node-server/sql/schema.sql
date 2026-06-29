@@ -5,9 +5,10 @@
 create table if not exists users (
   id          uuid primary key,
   login_type  text not null check (login_type in ('wechat', 'phone')),
-  openid      text unique,                 -- 微信登录
-  phone       text unique,                 -- 手机号登录
-  nickname    text default '光屿用户',
+  openid        text unique,               -- 微信登录
+  phone         text unique,               -- 手机号登录
+  password_hash text,                       -- 手机号+密码登录：scrypt 哈希（salt:hash）
+  nickname      text default '光屿用户',
   used_count  integer not null default 0,  -- 已用次数
   quota_limit integer not null default 20, -- 可用次数上限（免费额度 + 已购）
   created_at  timestamptz not null default now()
@@ -33,6 +34,9 @@ create table if not exists orders (
 );
 
 create index if not exists idx_orders_user on orders(user_id);
+
+-- 已建表的库升级（补 password_hash 列）：
+--   alter table users add column if not exists password_hash text;
 
 -- 并发安全的扣减建议（服务端用 service key 执行，绕过 RLS）：
 --   update users set used_count = used_count + 1

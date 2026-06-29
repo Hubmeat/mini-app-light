@@ -6,9 +6,10 @@
 CREATE TABLE IF NOT EXISTS users (
   id          CHAR(36)     NOT NULL,
   login_type  VARCHAR(16)  NOT NULL,            -- 'wechat' | 'phone'
-  openid      VARCHAR(64)  DEFAULT NULL,        -- 微信登录
-  phone       VARCHAR(20)  DEFAULT NULL,        -- 手机号登录
-  nickname    VARCHAR(64)  DEFAULT '光屿用户',
+  openid        VARCHAR(64)  DEFAULT NULL,      -- 微信登录
+  phone         VARCHAR(20)  DEFAULT NULL,      -- 手机号登录
+  password_hash VARCHAR(255) DEFAULT NULL,      -- 手机号+密码登录：scrypt 哈希（salt:hash）
+  nickname      VARCHAR(64)  DEFAULT '光屿用户',
   used_count  INT          NOT NULL DEFAULT 0,  -- 已用次数
   quota_limit INT          NOT NULL DEFAULT 20, -- 可用次数上限（免费额度 + 已购）
   created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -37,6 +38,9 @@ CREATE TABLE IF NOT EXISTS orders (
   PRIMARY KEY (id),
   KEY idx_orders_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 已建表的库升级（补 password_hash 列；MySQL 不支持 IF NOT EXISTS 加列，先确认列不存在）：
+--   ALTER TABLE users ADD COLUMN password_hash VARCHAR(255) DEFAULT NULL AFTER phone;
 
 -- 并发安全扣减由应用层单语句完成（见 src/db/mysql.adapter.js tryConsume）：
 --   UPDATE users SET used_count = used_count + 1

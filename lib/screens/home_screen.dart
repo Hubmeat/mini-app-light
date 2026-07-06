@@ -5,11 +5,13 @@ import 'package:image_picker/image_picker.dart';
 import '../data/sticker_catalog.dart';
 import '../data/templates.dart';
 import '../models/photo_source.dart';
+import '../services/auth_storage.dart';
 import '../theme/app_theme.dart';
 import '../widgets/aurora_background.dart';
 import '../widgets/glass.dart';
 import '../widgets/sticker_glyph.dart';
 import 'editor_screen.dart';
+import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -107,8 +109,23 @@ class _HomeScreenState extends State<HomeScreen> {
             radius: 100,
             padding: const EdgeInsets.all(11),
             onTap: () {},
-            child: Icon(Icons.tune,
-                size: 20, color: AppTheme.textPrimary),
+            child: Icon(Icons.tune, size: 20, color: AppTheme.textPrimary),
+          ),
+          const SizedBox(width: 10),
+          Glass(
+            radius: 100,
+            padding: const EdgeInsets.all(11),
+            onTap: () async {
+              await AuthStorage.instance.clearToken();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  (_) => false,
+                );
+              }
+            },
+            child: Icon(Icons.logout,
+                size: 20, color: AppTheme.textSecondary),
           ),
         ],
       ),
